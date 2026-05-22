@@ -12,7 +12,7 @@ const Tab = createBottomTabNavigator();
 
 export default function TabRoutes() {
   return (
-    <Tab.Navigator>
+    <Tab.Navigator screenOptions={{headerShown: false}}>
       <Tab.Screen name="Início" component={Home} options={{ tabBarIcon: ({ color, size }) => <Feather name="home" color={color} size={size} />, tabBarLabel: "Início" }} />
       <Tab.Screen name="Vacinas" component={Vacinas} options={{ tabBarIcon: ({ color, size }) => <MaterialIcons name="vaccines" size={size} color={color} />, tabBarLabel: "Vacinas" }} />
       <Tab.Screen name="Consultas" component={Consultas} options={{ tabBarIcon: ({ color, size }) => <MaterialIcons name="local-hospital" size={size} color={color} />, tabBarLabel: "Consultas" }} />
