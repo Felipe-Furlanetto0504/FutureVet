@@ -8,41 +8,77 @@ import Perfil from "../screens/Perfil";
 import Consultas from "../screens/Consultas";
 import Sobre from "../screens/Sobre";
 import IoT from "../screens/IoT";
- 
+import { useTheme } from "../theme";
+
 const Tab = createBottomTabNavigator();
- 
+
 export default function TabRoutes() {
+  const { t } = useTheme();
+
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: t.bg,
+          borderTopColor: t.border,
+          borderTopWidth: 1,
+        },
+        tabBarActiveTintColor: t.primary,
+        tabBarInactiveTintColor: t.muted,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "500",
+        },
+      }}
+    >
       <Tab.Screen
         name="Início"
         component={Home}
-        options={{ tabBarIcon: ({ color, size }) => <Feather name="home" color={color} size={size} />, tabBarLabel: "Início" }}
+        options={{
+          tabBarLabel: "Início",
+          tabBarIcon: ({ color, size }) => <Feather name="home" color={color} size={size} />,
+        }}
       />
       <Tab.Screen
         name="Vacinas"
         component={Vacinas}
-        options={{ tabBarIcon: ({ color, size }) => <MaterialIcons name="vaccines" size={size} color={color} />, tabBarLabel: "Vacinas" }}
+        options={{
+          tabBarLabel: "Vacinas",
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="vaccines" size={size} color={color} />,
+        }}
       />
       <Tab.Screen
         name="IoT"
         component={IoT}
-        options={{ tabBarIcon: ({ color, size }) => <MaterialIcons name="sensors" size={size} color={color} />, tabBarLabel: "IoT" }}
+        options={{
+          tabBarLabel: "IoT",
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="sensors" size={size} color={color} />,
+        }}
       />
       <Tab.Screen
         name="Consultas"
         component={Consultas}
-        options={{ tabBarIcon: ({ color, size }) => <MaterialIcons name="local-hospital" size={size} color={color} />, tabBarLabel: "Consultas" }}
+        options={{
+          tabBarLabel: "Consultas",
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="local-hospital" size={size} color={color} />,
+        }}
       />
       <Tab.Screen
         name="Sobre"
         component={Sobre}
-        options={{ tabBarIcon: ({ color, size }) => <AntDesign name="book" size={size} color={color} />, tabBarLabel: "Sobre" }}
+        options={{
+          tabBarLabel: "Sobre",
+          tabBarIcon: ({ color, size }) => <AntDesign name="book" size={size} color={color} />,
+        }}
       />
       <Tab.Screen
         name="Perfil"
         component={Perfil}
-        options={{ tabBarIcon: ({ color, size }) => <MaterialIcons name="emoji-emotions" size={size} color={color} />, tabBarLabel: "Perfil" }}
+        options={{
+          tabBarLabel: "Perfil",
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="emoji-emotions" size={size} color={color} />,
+        }}
       />
     </Tab.Navigator>
   );

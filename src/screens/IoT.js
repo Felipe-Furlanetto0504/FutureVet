@@ -1,39 +1,41 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState, useRef } from "react";
-import {Text,View,StyleSheet,ScrollView,TouchableOpacity,FlatList,Alert,Modal,TextInput,RefreshControl,
+import {
+  Text, View, StyleSheet, ScrollView, TouchableOpacity,
+  FlatList, Alert, Modal, RefreshControl,
 } from "react-native";
 import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import { useTheme } from "../theme";
 
-// Trocar pelo IP da máquina se testar em device físico
 const API_BASE = "http://localhost:8080";
-const POLL_MS = 5000;
+const POLL_MS  = 5000;
 
 const LIMITES = {
-  dog:    { temp: [37.5, 39.2], hr: [60, 120],  especie: "Cão"    },
-  cat:    { temp: [38.0, 39.5], hr: [120, 220], especie: "Gato"   },
-  rabbit: { temp: [38.5, 40.0], hr: [140, 300], especie: "Coelho" },
+  dog:    { temp: [37.5, 39.2], hr: [60,  120] },
+  cat:    { temp: [38.0, 39.5], hr: [120, 220] },
+  rabbit: { temp: [38.5, 40.0], hr: [140, 300] },
 };
 
 const ALERTAS_PREVENTIVOS = [
-  { id: "1", icone: "medication",     cor: "#e74c3c", titulo: "Vermífugo atrasado",  detalhe: "Venceu há 12 dias · Push enviado", badge: "Urgente"    },
-  { id: "2", icone: "vaccines",       cor: "#f39c12", titulo: "V10 — reforço anual", detalhe: "Vence em 18 dias · Agendado",       badge: "18 dias"    },
-  { id: "3", icone: "local-hospital", cor: "#4A90E2", titulo: "Consulta preventiva", detalhe: "Última: 4 meses atrás",             badge: "Recomendar" },
-  { id: "4", icone: "bug-report",     cor: "#27ae60", titulo: "Pulga & Carrapato",   detalhe: "Próxima dose: em 5 dias",           badge: "5 dias"     },
+  { id: "1", icone: "medication",     cor: "#e74c3c", titulo: "Vermífugo atrasado",   detalhe: "Venceu há 12 dias · Push enviado", badge: "Urgente"    },
+  { id: "2", icone: "vaccines",       cor: "#f39c12", titulo: "V10 — reforço anual",  detalhe: "Vence em 18 dias · Agendado",      badge: "18 dias"    },
+  { id: "3", icone: "local-hospital", cor: "#4A90E2", titulo: "Consulta preventiva",  detalhe: "Última: 4 meses atrás",            badge: "Recomendar" },
+  { id: "4", icone: "bug-report",     cor: "#27ae60", titulo: "Pulga & Carrapato",    detalhe: "Próxima dose: em 5 dias",          badge: "5 dias"     },
 ];
 
 export default function IoT() {
-  const [leitura, SetLeitura]         = useState(null);
-  const [online, SetOnline]           = useState(false);
-  const [atualizando, SetAtualizando] = useState(false);
+  const { t } = useTheme();
+
+  const [leitura, SetLeitura]               = useState(null);
+  const [online, SetOnline]                 = useState(false);
+  const [atualizando, SetAtualizando]       = useState(false);
   const [petSelecionado, SetPetSelecionado] = useState("rex");
-  const [petsStorage, SetPetsStorage] = useState([]);
-  const [logs, SetLogs]               = useState([]);
-  const [modalLog, SetModalLog]       = useState(false);
+  const [petsStorage, SetPetsStorage]       = useState([]);
+  const [logs, SetLogs]                     = useState([]);
+  const [modalLog, SetModalLog]             = useState(false);
   const pollRef = useRef(null);
 
-  useEffect(() => {
-    carregarPetsStorage();
-  }, []);
+  useEffect(() => { carregarPetsStorage(); }, []);
 
   useEffect(() => {
     buscarDados();
@@ -51,23 +53,20 @@ export default function IoT() {
       const res = await fetch(`${API_BASE}/api/latest/${petSelecionado}`, {
         signal: AbortSignal.timeout(3000),
       });
-      if (!res.ok) throw new Error("HTTP " + res.status);
+      if (!res.ok) throw new Error();
       const data = await res.json();
-      if (!data.sensors) throw new Error("payload invalido");
-
-      SetOnline(true);
-      SetLeitura(data);
+      if (!data.sensors) throw new Error();
+      SetOnline(true); SetLeitura(data);
       adicionarLog(data.protocol || "MQTT", petSelecionado, data.sensors);
-    } catch {
-      SetOnline(false);
-      gerarFallback();
-    }
+    } catch { SetOnline(false); gerarFallback(); }
   }
 
   function gerarFallback() {
-    const base = { rex: { especie: "dog", temp: 38.5, hr: 90, steps: 60, peso: 28.3 },
-                   luna: { especie: "cat", temp: 38.3, hr: 150, steps: 40, peso: 4.1 },
-                   bolinha: { especie: "rabbit", temp: 38.8, hr: 200, steps: 80, peso: 2.3 } };
+    const base = {
+      rex:     { especie: "dog",    temp: 38.5, hr: 90,  steps: 60,  peso: 28.3 },
+      luna:    { especie: "cat",    temp: 38.3, hr: 150, steps: 40,  peso: 4.1  },
+      bolinha: { especie: "rabbit", temp: 38.8, hr: 200, steps: 80,  peso: 2.3  },
+    };
     const p = base[petSelecionado] || base.rex;
     const r = {
       sensors: {
@@ -77,11 +76,8 @@ export default function IoT() {
         steps_last_minute:   Math.round(p.steps + (Math.random() - 0.5) * 20),
         weight_kg:           p.peso,
       },
-      battery_pct: 95,
-      health_score: parseFloat((78 + Math.random() * 18).toFixed(0)),
-      alerts: [],
-      protocol: "LOCAL",
-      species: p.especie,
+      battery_pct: 95, health_score: parseFloat((78 + Math.random() * 18).toFixed(0)),
+      alerts: [], protocol: "LOCAL", species: p.especie,
     };
     SetLeitura(r);
     adicionarLog("LOCAL", petSelecionado, r.sensors);
@@ -89,8 +85,10 @@ export default function IoT() {
 
   function adicionarLog(proto, pet, sensores) {
     const ts = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const msg = `T:${sensores.temperature_celsius}°C  HR:${sensores.heart_rate_bpm}bpm  Steps:${sensores.steps_last_minute}`;
-    SetLogs((prev) => [{ id: Date.now().toString(), ts, proto, pet, msg }, ...prev].slice(0, 20));
+    SetLogs((prev) => [{
+      id: Date.now().toString(), ts, proto, pet,
+      msg: `T:${sensores.temperature_celsius}°C  HR:${sensores.heart_rate_bpm}bpm  Steps:${sensores.steps_last_minute}`,
+    }, ...prev].slice(0, 20));
   }
 
   async function aoAtualizar() {
@@ -100,15 +98,15 @@ export default function IoT() {
   }
 
   function statusTemperatura(temp, limites) {
-    if (temp > limites.temp[1]) return { texto: "Febre detectada", cor: "#e74c3c", icone: "thermostat" };
-    if (temp < limites.temp[0]) return { texto: "Hipotermia leve", cor: "#f39c12", icone: "ac-unit" };
-    return { texto: "Normal", cor: "#27ae60", icone: "check-circle" };
+    if (temp > limites.temp[1]) return { texto: "Febre detectada", cor: t.danger,  icone: "thermostat"  };
+    if (temp < limites.temp[0]) return { texto: "Hipotermia leve", cor: t.warning, icone: "ac-unit"     };
+    return                             { texto: "Normal",           cor: t.success, icone: "check-circle" };
   }
 
   function statusFrequencia(hr, limites) {
-    if (hr > limites.hr[1]) return { texto: "Acima do normal", cor: "#e74c3c", icone: "favorite" };
-    if (hr < limites.hr[0]) return { texto: "Abaixo do normal", cor: "#e74c3c", icone: "favorite" };
-    return { texto: "Normal", cor: "#27ae60", icone: "favorite" };
+    if (hr > limites.hr[1]) return { texto: "Acima do normal", cor: t.danger,  icone: "favorite" };
+    if (hr < limites.hr[0]) return { texto: "Abaixo do normal",cor: t.danger,  icone: "favorite" };
+    return                         { texto: "Normal",           cor: t.success, icone: "favorite" };
   }
 
   const s       = leitura?.sensors;
@@ -121,7 +119,6 @@ export default function IoT() {
   const stTemp = s ? statusTemperatura(s.temperature_celsius, lim) : null;
   const stHR   = s ? statusFrequencia(s.heart_rate_bpm, lim) : null;
 
-  // Monta lista de pets: sempre mostra rex/luna/bolinha + os do storage
   const petsTabs = [
     { id: "rex",     emoji: "🐕", label: "Rex"     },
     { id: "luna",    emoji: "🐈", label: "Luna"    },
@@ -129,209 +126,134 @@ export default function IoT() {
     ...petsStorage.map((p) => ({ id: p.id, emoji: "🐾", label: p.nome })),
   ];
 
-  return (
-    <View style={styles.container}>
+  const corBat = bat > 50 ? t.success : bat > 20 ? t.warning : t.danger;
 
+  return (
+    <View style={{ flex: 1, backgroundColor: t.bg }}>
       {/* ── Título ── */}
       <View style={styles.cabecalho}>
         <View>
-          <Text style={styles.titulo}>Monitor IoT</Text>
-          <Text style={styles.subtitulo}>ESP32-S3 · Wokwi Simulated</Text>
+          <Text style={[styles.titulo, { color: t.text }]}>Monitor IoT</Text>
+          <Text style={[styles.subtitulo, { color: t.muted }]}>ESP32-S3 · Wokwi Simulated</Text>
         </View>
-        <View style={[styles.badgeStatus, online ? styles.badgeOnline : styles.badgeOffline]}>
-          <MaterialIcons
-            name={online ? "wifi" : "wifi-off"}
-            size={14}
-            color={online ? "#27ae60" : "#f39c12"}
-          />
-          <Text style={[styles.badgeStatusTexto, { color: online ? "#27ae60" : "#f39c12" }]}>
+        <View style={[styles.badgeStatus, { backgroundColor: online ? t.successBg : t.warningBg }]}>
+          <MaterialIcons name={online ? "wifi" : "wifi-off"} size={14}
+            color={online ? t.success : t.warning} />
+          <Text style={[styles.badgeStatusTexto, { color: online ? t.success : t.warning }]}>
             {online ? "Online" : "Offline"}
           </Text>
         </View>
       </View>
 
-      {/* ── Aviso servidor ── */}
       {!online && (
-        <View style={styles.avisoOffline}>
-          <MaterialIcons name="info-outline" size={16} color="#f39c12" />
-          <Text style={styles.avisoOfflineTexto}>
+        <View style={[styles.avisoOffline, { backgroundColor: t.warningBg }]}>
+          <MaterialIcons name="info-outline" size={16} color={t.warning} />
+          <Text style={[styles.avisoOfflineTexto, { color: t.warning }]}>
             Servidor offline · execute petlink_server.py
           </Text>
         </View>
       )}
 
       {/* ── Seletor de pet ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.petScroll}
-        contentContainerStyle={styles.petScrollContent}
-      >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        style={styles.petScroll} contentContainerStyle={styles.petScrollContent}>
         {petsTabs.map((p) => (
-          <TouchableOpacity
-            key={p.id}
-            style={[styles.petChip, petSelecionado === p.id && styles.petChipAtivo]}
-            onPress={() => SetPetSelecionado(p.id)}
-          >
+          <TouchableOpacity key={p.id}
+            style={[styles.petChip, { backgroundColor: t.surfaceCard, borderColor: t.surfaceCard },
+              petSelecionado === p.id && { backgroundColor: t.primaryBg, borderColor: t.primary }]}
+            onPress={() => SetPetSelecionado(p.id)}>
             <Text style={styles.petChipEmoji}>{p.emoji}</Text>
-            <Text style={[styles.petChipTexto, petSelecionado === p.id && styles.petChipTextoAtivo]}>
+            <Text style={[styles.petChipTexto, { color: t.muted },
+              petSelecionado === p.id && { color: t.primary, fontWeight: "bold" }]}>
               {p.label}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        refreshControl={
-          <RefreshControl refreshing={atualizando} onRefresh={aoAtualizar} colors={["#4A90E2"]} />
-        }
-      >
+      <ScrollView showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingHorizontal: 20 }]}
+        refreshControl={<RefreshControl refreshing={atualizando} onRefresh={aoAtualizar} colors={[t.primary]} />}>
 
-        {/* ── Cards de sensores ── */}
         {s ? (
           <>
-            <Text style={styles.secaoTitulo}>Sensores em Tempo Real</Text>
+            <Text style={[styles.secaoTitulo, { color: t.text }]}>Sensores em Tempo Real</Text>
 
             <View style={styles.gridSensores}>
-
-              <View style={[styles.cardSensor, styles.cardSensorMetade]}>
-                <View style={styles.cardSensorHeader}>
-                  <MaterialIcons name="thermostat" size={20} color="#e74c3c" />
-                  <Text style={styles.cardSensorLabel}>Temperatura</Text>
-                </View>
-                <Text style={[styles.cardSensorValor, { color: "#e74c3c" }]}>
-                  {s.temperature_celsius}
-                  <Text style={styles.cardSensorUnidade}>°C</Text>
-                </Text>
-                {stTemp && (
-                  <View style={styles.cardSensorStatus}>
-                    <MaterialIcons name={stTemp.icone} size={13} color={stTemp.cor} />
-                    <Text style={[styles.cardSensorStatusTexto, { color: stTemp.cor }]}>
-                      {stTemp.texto}
-                    </Text>
+              {[
+                { icone: "thermostat",    cor: t.danger,  valor: s.temperature_celsius, unidade: "°C",  label: "Temperatura", st: stTemp },
+                { icone: "favorite",      cor: t.primary, valor: s.heart_rate_bpm,       unidade: " bpm",label: "Freq. Cardíaca", st: stHR },
+                { icone: "directions-run",cor: t.warning, valor: s.steps_last_minute,    unidade: "/min",label: "Atividade",
+                  st: { texto: s.activity_score > 0.1 ? "Ativo" : "Atividade baixa",
+                        cor:   s.activity_score > 0.1 ? t.success : t.warning,
+                        icone: s.activity_score > 0.1 ? "check-circle" : "warning" } },
+                { icone: "monitor-weight",cor: t.success, valor: s.weight_kg,            unidade: " kg", label: "Peso",
+                  st: { texto: "Dentro do ideal", cor: t.success, icone: "check-circle" } },
+              ].map((item) => (
+                <View key={item.label} style={[styles.cardSensor, styles.cardSensorMetade, { backgroundColor: t.surfaceCard }]}>
+                  <View style={styles.cardSensorHeader}>
+                    <MaterialIcons name={item.icone} size={20} color={item.cor} />
+                    <Text style={[styles.cardSensorLabel, { color: t.muted }]}>{item.label}</Text>
                   </View>
-                )}
-              </View>
-
-              <View style={[styles.cardSensor, styles.cardSensorMetade]}>
-                <View style={styles.cardSensorHeader}>
-                  <MaterialIcons name="favorite" size={20} color="#4A90E2" />
-                  <Text style={styles.cardSensorLabel}>Freq. Cardíaca</Text>
-                </View>
-                <Text style={[styles.cardSensorValor, { color: "#4A90E2" }]}>
-                  {s.heart_rate_bpm}
-                  <Text style={styles.cardSensorUnidade}> bpm</Text>
-                </Text>
-                {stHR && (
-                  <View style={styles.cardSensorStatus}>
-                    <MaterialIcons name={stHR.icone} size={13} color={stHR.cor} />
-                    <Text style={[styles.cardSensorStatusTexto, { color: stHR.cor }]}>
-                      {stHR.texto}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <View style={[styles.cardSensor, styles.cardSensorMetade]}>
-                <View style={styles.cardSensorHeader}>
-                  <MaterialIcons name="directions-run" size={20} color="#f39c12" />
-                  <Text style={styles.cardSensorLabel}>Atividade</Text>
-                </View>
-                <Text style={[styles.cardSensorValor, { color: "#f39c12" }]}>
-                  {s.steps_last_minute}
-                  <Text style={styles.cardSensorUnidade}>/min</Text>
-                </Text>
-                <View style={styles.cardSensorStatus}>
-                  <MaterialIcons
-                    name={s.activity_score > 0.1 ? "check-circle" : "warning"}
-                    size={13}
-                    color={s.activity_score > 0.1 ? "#27ae60" : "#f39c12"}
-                  />
-                  <Text style={[styles.cardSensorStatusTexto, { color: s.activity_score > 0.1 ? "#27ae60" : "#f39c12" }]}>
-                    {s.activity_score > 0.1 ? "Ativo" : "Atividade baixa"}
+                  <Text style={[styles.cardSensorValor, { color: item.cor }]}>
+                    {item.valor}<Text style={[styles.cardSensorUnidade, { color: t.muted }]}>{item.unidade}</Text>
                   </Text>
+                  <View style={styles.cardSensorStatus}>
+                    <MaterialIcons name={item.st.icone} size={13} color={item.st.cor} />
+                    <Text style={[styles.cardSensorStatusTexto, { color: item.st.cor }]}>{item.st.texto}</Text>
+                  </View>
                 </View>
-              </View>
-
-              <View style={[styles.cardSensor, styles.cardSensorMetade]}>
-                <View style={styles.cardSensorHeader}>
-                  <MaterialIcons name="monitor-weight" size={20} color="#27ae60" />
-                  <Text style={styles.cardSensorLabel}>Peso</Text>
-                </View>
-                <Text style={[styles.cardSensorValor, { color: "#27ae60" }]}>
-                  {s.weight_kg}
-                  <Text style={styles.cardSensorUnidade}> kg</Text>
-                </Text>
-                <View style={styles.cardSensorStatus}>
-                  <MaterialIcons name="check-circle" size={13} color="#27ae60" />
-                  <Text style={[styles.cardSensorStatusTexto, { color: "#27ae60" }]}>Dentro do ideal</Text>
-                </View>
-              </View>
-
+              ))}
             </View>
 
-            {/* ── Bateria ── */}
-            <View style={styles.cardBateria}>
+            {/* Bateria */}
+            <View style={[styles.cardBateria, { backgroundColor: t.surfaceCard }]}>
               <View style={styles.cardBateriaHeader}>
-                <MaterialIcons
-                  name="battery-full"
-                  size={20}
-                  color={bat > 50 ? "#27ae60" : bat > 20 ? "#f39c12" : "#e74c3c"}
-                />
-                <Text style={styles.cardBateriaLabel}>Bateria da coleira</Text>
-                <Text style={[styles.cardBateriaValor, {
-                  color: bat > 50 ? "#27ae60" : bat > 20 ? "#f39c12" : "#e74c3c",
-                }]}>
-                  {bat}%
-                </Text>
+                <MaterialIcons name="battery-full" size={20} color={corBat} />
+                <Text style={[styles.cardBateriaLabel, { color: t.text }]}>Bateria da coleira</Text>
+                <Text style={[styles.cardBateriaValor, { color: corBat }]}>{bat}%</Text>
               </View>
-              <View style={styles.barraFundo}>
-                <View style={[styles.barraPreenchida, {
-                  width: `${bat}%`,
-                  backgroundColor: bat > 50 ? "#27ae60" : bat > 20 ? "#f39c12" : "#e74c3c",
-                }]} />
+              <View style={[styles.barraFundo, { backgroundColor: t.border }]}>
+                <View style={[styles.barraPreenchida, { width: `${bat}%`, backgroundColor: corBat }]} />
               </View>
             </View>
 
-            {/* ── Score de saúde ── */}
-            <View style={styles.cardScore}>
+            {/* Score */}
+            <View style={[styles.cardScore, { backgroundColor: t.surfaceCard }]}>
               <View style={styles.cardScoreEsquerda}>
-                <Text style={styles.cardScoreNumero}>{score}</Text>
-                <Text style={styles.cardScoreLabel}>/100</Text>
-                <Text style={styles.cardScoreSub}>Score de Saúde</Text>
+                <Text style={[styles.cardScoreNumero, { color: t.primary }]}>{score}</Text>
+                <Text style={[styles.cardScoreLabel, { color: t.muted }]}>/100</Text>
+                <Text style={[styles.cardScoreSub, { color: t.muted }]}>Score de Saúde</Text>
               </View>
               <View style={styles.cardScoreDireita}>
                 {[
-                  { label: "Vacinas",    valor: "5/5",     cor: "#27ae60" },
-                  { label: "Consultas",  valor: "2/3",     cor: "#f39c12" },
-                  { label: "Vermífugo",  valor: "Atrasado", cor: "#e74c3c" },
-                  { label: "Bateria",    valor: bat + "%", cor: bat > 50 ? "#27ae60" : "#f39c12" },
+                  { label: "Vacinas",    valor: "5/5",      cor: t.success  },
+                  { label: "Consultas",  valor: "2/3",      cor: t.warning  },
+                  { label: "Vermífugo",  valor: "Atrasado", cor: t.danger   },
+                  { label: "Bateria",    valor: bat + "%",  cor: corBat     },
                 ].map((item, i) => (
                   <View key={i} style={styles.cardScoreLinha}>
-                    <Text style={styles.cardScoreLinhaLabel}>{item.label}</Text>
+                    <Text style={[styles.cardScoreLinhaLabel, { color: t.text2 }]}>{item.label}</Text>
                     <Text style={[styles.cardScoreLinhaValor, { color: item.cor }]}>{item.valor}</Text>
                   </View>
                 ))}
               </View>
             </View>
 
-            {/* ── Alertas do sensor (dinâmico) ── */}
             {alertasSensor.length > 0 && (
               <>
-                <Text style={styles.secaoTitulo}>Alertas do Sensor</Text>
+                <Text style={[styles.secaoTitulo, { color: t.text }]}>Alertas do Sensor</Text>
                 {alertasSensor.map((a, i) => (
-                  <View key={i} style={[styles.card, styles.cardAlertaUrgente]}>
-                    <View style={[styles.cardIcone, { backgroundColor: "#fdecea" }]}>
-                      <MaterialIcons name="warning" size={22} color="#e74c3c" />
+                  <View key={i} style={[styles.card, styles.cardAlertaUrgente, { backgroundColor: t.surfaceCard }]}>
+                    <View style={[styles.cardIcone, { backgroundColor: t.dangerBg }]}>
+                      <MaterialIcons name="warning" size={22} color={t.danger} />
                     </View>
                     <View style={styles.cardInfo}>
-                      <Text style={styles.cardNome}>{a.replace(/_/g, " ")}</Text>
-                      <Text style={styles.cardDetalhe}>Verificar com veterinário</Text>
+                      <Text style={[styles.cardNome, { color: t.text }]}>{a.replace(/_/g, " ")}</Text>
+                      <Text style={[styles.cardDetalhe, { color: t.text2 }]}>Verificar com veterinário</Text>
                     </View>
-                    <View style={[styles.badgePequeno, { backgroundColor: "#fdecea" }]}>
-                      <Text style={[styles.badgePequenoTexto, { color: "#e74c3c" }]}>Urgente</Text>
+                    <View style={[styles.badgePequeno, { backgroundColor: t.dangerBg }]}>
+                      <Text style={[styles.badgePequenoTexto, { color: t.danger }]}>Urgente</Text>
                     </View>
                   </View>
                 ))}
@@ -340,470 +262,145 @@ export default function IoT() {
           </>
         ) : (
           <View style={styles.carregando}>
-            <FontAwesome5 name="paw" size={40} color="#ccc" />
-            <Text style={styles.carregandoTexto}>Buscando dados do sensor...</Text>
+            <FontAwesome5 name="paw" size={40} color={t.muted2} />
+            <Text style={[styles.carregandoTexto, { color: t.muted2 }]}>Buscando dados do sensor...</Text>
           </View>
         )}
 
-        {/* ── Alertas preventivos ── */}
-        <Text style={styles.secaoTitulo}>Alertas Preventivos</Text>
+        <Text style={[styles.secaoTitulo, { color: t.text }]}>Alertas Preventivos</Text>
         {ALERTAS_PREVENTIVOS.map((a) => (
-          <View key={a.id} style={styles.card}>
-            <View style={[styles.cardIcone, { backgroundColor: a.cor + "20" }]}>
+          <View key={a.id} style={[styles.card, { backgroundColor: t.surfaceCard }]}>
+            <View style={[styles.cardIcone, { backgroundColor: a.cor + "22" }]}>
               <MaterialIcons name={a.icone} size={22} color={a.cor} />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardNome}>{a.titulo}</Text>
-              <Text style={styles.cardDetalhe}>{a.detalhe}</Text>
+              <Text style={[styles.cardNome, { color: t.text }]}>{a.titulo}</Text>
+              <Text style={[styles.cardDetalhe, { color: t.text2 }]}>{a.detalhe}</Text>
             </View>
-            <View style={[styles.badgePequeno, { backgroundColor: a.cor + "20" }]}>
+            <View style={[styles.badgePequeno, { backgroundColor: a.cor + "22" }]}>
               <Text style={[styles.badgePequenoTexto, { color: a.cor }]}>{a.badge}</Text>
             </View>
           </View>
         ))}
 
-        {/* ── Botão ver logs ── */}
         <TouchableOpacity
-          style={styles.botaoLog}
-          onPress={() => SetModalLog(true)}
-        >
-          <MaterialIcons name="terminal" size={20} color="#4A90E2" />
-          <Text style={styles.botaoLogTexto}>Ver Log MQTT / HTTP</Text>
+          style={[styles.botaoLog, { backgroundColor: t.primaryBg, borderColor: t.primary }]}
+          onPress={() => SetModalLog(true)}>
+          <MaterialIcons name="terminal" size={20} color={t.primary} />
+          <Text style={[styles.botaoLogTexto, { color: t.primary }]}>Ver Log MQTT / HTTP</Text>
           {logs.length > 0 && (
-            <View style={styles.badgeLog}>
+            <View style={[styles.badgeLog, { backgroundColor: t.primary }]}>
               <Text style={styles.badgeLogTexto}>{logs.length}</Text>
             </View>
           )}
         </TouchableOpacity>
-
       </ScrollView>
 
-      {/* ── Modal de logs ── */}
+      {/* ── Modal logs ── */}
       <Modal visible={modalLog} animationType="slide" transparent>
-        <View style={styles.modalFundo}>
-          <View style={styles.modalContainer}>
-
+        <View style={[styles.modalFundo, { backgroundColor: t.modalFundo }]}>
+          <View style={[styles.modalContainer, { backgroundColor: t.modalBg }]}>
             <View style={styles.modalCabecalho}>
-              <Text style={styles.modalTitulo}>Log MQTT / HTTP</Text>
+              <Text style={[styles.modalTitulo, { color: t.text }]}>Log MQTT / HTTP</Text>
               <TouchableOpacity onPress={() => SetModalLog(false)}>
-                <MaterialIcons name="close" size={24} color="#333" />
+                <MaterialIcons name="close" size={24} color={t.text} />
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.modalSubtitulo}>
+            <Text style={[styles.modalSubtitulo, { color: t.muted }]}>
               Tópico: petlink/sensors/{petSelecionado}
             </Text>
-
             {logs.length === 0 ? (
               <View style={styles.logVazio}>
-                <MaterialIcons name="terminal" size={40} color="#ccc" />
-                <Text style={styles.logVazioTexto}>Nenhum dado recebido ainda</Text>
+                <MaterialIcons name="terminal" size={40} color={t.muted2} />
+                <Text style={[styles.logVazioTexto, { color: t.muted2 }]}>Nenhum dado recebido ainda</Text>
               </View>
             ) : (
-              <FlatList
-                data={logs}
-                keyExtractor={(item) => item.id}
-                style={{ maxHeight: 380 }}
+              <FlatList data={logs} keyExtractor={(i) => i.id} style={{ maxHeight: 380 }}
                 renderItem={({ item }) => (
-                  <View style={styles.logItem}>
-                    <Text style={styles.logTs}>{item.ts}</Text>
+                  <View style={[styles.logItem, { backgroundColor: t.bg2 }]}>
+                    <Text style={[styles.logTs, { color: t.muted }]}>{item.ts}</Text>
                     <Text style={[styles.logProto, {
-                      color: item.proto === "MQTT" ? "#4A90E2" : item.proto === "LOCAL" ? "#f39c12" : "#888",
-                    }]}>
-                      {item.proto}
-                    </Text>
-                    <Text style={styles.logMensagem} numberOfLines={2}>{item.msg}</Text>
+                      color: item.proto === "MQTT" ? t.primary : item.proto === "LOCAL" ? t.warning : t.muted,
+                    }]}>{item.proto}</Text>
+                    <Text style={[styles.logMensagem, { color: t.text2 }]} numberOfLines={2}>{item.msg}</Text>
                   </View>
-                )}
-              />
+                )} />
             )}
-
-            <TouchableOpacity
-              style={styles.botaoLimparLog}
-              onPress={() => { SetLogs([]); SetModalLog(false); }}
-            >
-              <Text style={styles.botaoLimparLogTexto}>Limpar logs</Text>
+            <TouchableOpacity style={styles.botaoLimparLog}
+              onPress={() => { SetLogs([]); SetModalLog(false); }}>
+              <Text style={[styles.botaoLimparLogTexto, { color: t.danger }]}>Limpar logs</Text>
             </TouchableOpacity>
-
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: 20,
-  },
-  cabecalho: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 4,
-  },
-  titulo: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  subtitulo: {
-    fontSize: 12,
-    color: "#888",
-    marginTop: 2,
-  },
-  badgeStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  badgeOnline: {
-    backgroundColor: "#eafaf1",
-  },
-  badgeOffline: {
-    backgroundColor: "#fef9e7",
-  },
-  badgeStatusTexto: {
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  avisoOffline: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginHorizontal: 20,
-    marginTop: 8,
-    padding: 10,
-    backgroundColor: "#fef9e7",
-    borderRadius: 8,
-  },
-  avisoOfflineTexto: {
-    fontSize: 12,
-    color: "#f39c12",
-    flex: 1,
-  },
-  petScroll: {
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  petScrollContent: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
-  petChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#f2f2f2",
-    borderWidth: 1,
-    borderColor: "#f2f2f2",
-  },
-  petChipAtivo: {
-    backgroundColor: "#eaf3fb",
-    borderColor: "#4A90E2",
-  },
-  petChipEmoji: {
-    fontSize: 14,
-  },
-  petChipTexto: {
-    fontSize: 13,
-    color: "#888",
-    fontWeight: "500",
-  },
-  petChipTextoAtivo: {
-    color: "#4A90E2",
-    fontWeight: "bold",
-  },
-  scroll: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 30,
-  },
-  secaoTitulo: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  gridSensores: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 12,
-  },
-  cardSensor: {
-    backgroundColor: "#f2f2f2",
-    borderRadius: 12,
-    padding: 14,
-  },
-  cardSensorMetade: {
-    width: "47.5%",
-  },
-  cardSensorHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
-  },
-  cardSensorLabel: {
-    fontSize: 12,
-    color: "#888",
-    fontWeight: "500",
-  },
-  cardSensorValor: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 6,
-  },
-  cardSensorUnidade: {
-    fontSize: 13,
-    fontWeight: "400",
-    color: "#888",
-  },
-  cardSensorStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  cardSensorStatusTexto: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  cardBateria: {
-    backgroundColor: "#f2f2f2",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-  },
-  cardBateriaHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 10,
-  },
-  cardBateriaLabel: {
-    fontSize: 14,
-    color: "#333",
-    fontWeight: "500",
-    flex: 1,
-  },
-  cardBateriaValor: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  barraFundo: {
-    height: 6,
-    backgroundColor: "#ddd",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  barraPreenchida: {
-    height: 6,
-    borderRadius: 3,
-  },
-  cardScore: {
-    backgroundColor: "#f2f2f2",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  cardScoreEsquerda: {
-    alignItems: "center",
-    minWidth: 70,
-  },
-  cardScoreNumero: {
-    fontSize: 40,
-    fontWeight: "bold",
-    color: "#4A90E2",
-    lineHeight: 44,
-  },
-  cardScoreLabel: {
-    fontSize: 14,
-    color: "#888",
-  },
-  cardScoreSub: {
-    fontSize: 11,
-    color: "#888",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  cardScoreDireita: {
-    flex: 1,
-    gap: 6,
-  },
-  cardScoreLinha: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  cardScoreLinhaLabel: {
-    fontSize: 13,
-    color: "#555",
-  },
-  cardScoreLinhaValor: {
-    fontSize: 13,
-    fontWeight: "bold",
-  },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f2f2f2",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-  },
-  cardAlertaUrgente: {
-    borderLeftWidth: 3,
-    borderLeftColor: "#e74c3c",
-  },
-  cardIcone: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  cardNome: {
-    fontSize: 15,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 3,
-  },
-  cardDetalhe: {
-    fontSize: 13,
-    color: "#555",
-  },
-  badgePequeno: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  badgePequenoTexto: {
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  carregando: {
-    alignItems: "center",
-    paddingVertical: 40,
-    gap: 12,
-  },
-  carregandoTexto: {
-    color: "#aaa",
-    fontSize: 14,
-  },
-  botaoLog: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#4A90E2",
-    backgroundColor: "#eaf3fb",
-  },
-  botaoLogTexto: {
-    color: "#4A90E2",
-    fontWeight: "bold",
-    fontSize: 15,
-    flex: 1,
-  },
-  badgeLog: {
-    backgroundColor: "#4A90E2",
-    borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  badgeLogTexto: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  modalFundo: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContainer: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    paddingBottom: 36,
-  },
-  modalCabecalho: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  modalTitulo: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  modalSubtitulo: {
-    fontSize: 12,
-    color: "#888",
-    marginBottom: 16,
-  },
-  logVazio: {
-    alignItems: "center",
-    paddingVertical: 30,
-    gap: 10,
-  },
-  logVazioTexto: {
-    color: "#aaa",
-    fontSize: 14,
-  },
-  logItem: {
-    backgroundColor: "#f2f2f2",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
-    gap: 2,
-  },
-  logTs: {
-    fontSize: 10,
-    color: "#888",
-  },
-  logProto: {
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  logMensagem: {
-    fontSize: 12,
-    color: "#555",
-    marginTop: 2,
-  },
-  botaoLimparLog: {
-    marginTop: 16,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  botaoLimparLogTexto: {
-    color: "#e74c3c",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
+  cabecalho:             { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 20, marginBottom: 4 },
+  titulo:                { fontSize: 28, fontWeight: "bold" },
+  subtitulo:             { fontSize: 12, marginTop: 2 },
+  badgeStatus:           { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  badgeStatusTexto:      { fontSize: 12, fontWeight: "bold" },
+  avisoOffline:          { flexDirection: "row", alignItems: "center", gap: 6, marginHorizontal: 20, marginTop: 8, padding: 10, borderRadius: 8 },
+  avisoOfflineTexto:     { fontSize: 12, flex: 1 },
+  petScroll:             { marginTop: 12, marginBottom: 4 },
+  petScrollContent:      { paddingHorizontal: 20, gap: 8 },
+  petChip:               { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  petChipEmoji:          { fontSize: 14 },
+  petChipTexto:          { fontSize: 13, fontWeight: "500" },
+  scroll:                { paddingTop: 12, paddingBottom: 30 },
+  secaoTitulo:           { fontSize: 18, fontWeight: "bold", marginBottom: 12, marginTop: 8 },
+  gridSensores:          { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
+  cardSensor:            { borderRadius: 12, padding: 14 },
+  cardSensorMetade:      { width: "47.5%" },
+  cardSensorHeader:      { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  cardSensorLabel:       { fontSize: 12, fontWeight: "500" },
+  cardSensorValor:       { fontSize: 26, fontWeight: "bold", marginBottom: 6 },
+  cardSensorUnidade:     { fontSize: 13, fontWeight: "400" },
+  cardSensorStatus:      { flexDirection: "row", alignItems: "center", gap: 4 },
+  cardSensorStatusTexto: { fontSize: 11, fontWeight: "500" },
+  cardBateria:           { borderRadius: 12, padding: 14, marginBottom: 12 },
+  cardBateriaHeader:     { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  cardBateriaLabel:      { fontSize: 14, fontWeight: "500", flex: 1 },
+  cardBateriaValor:      { fontSize: 16, fontWeight: "bold" },
+  barraFundo:            { height: 6, borderRadius: 3, overflow: "hidden" },
+  barraPreenchida:       { height: 6, borderRadius: 3 },
+  cardScore:             { borderRadius: 12, padding: 14, marginBottom: 12, flexDirection: "row", alignItems: "center", gap: 16 },
+  cardScoreEsquerda:     { alignItems: "center", minWidth: 70 },
+  cardScoreNumero:       { fontSize: 40, fontWeight: "bold", lineHeight: 44 },
+  cardScoreLabel:        { fontSize: 14 },
+  cardScoreSub:          { fontSize: 11, marginTop: 4, textAlign: "center" },
+  cardScoreDireita:      { flex: 1, gap: 6 },
+  cardScoreLinha:        { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  cardScoreLinhaLabel:   { fontSize: 13 },
+  cardScoreLinhaValor:   { fontSize: 13, fontWeight: "bold" },
+  card:                  { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 14, marginBottom: 10 },
+  cardAlertaUrgente:     { borderLeftWidth: 3, borderLeftColor: "#e74c3c" },
+  cardIcone:             { width: 44, height: 44, borderRadius: 10, justifyContent: "center", alignItems: "center", marginRight: 12 },
+  cardInfo:              { flex: 1 },
+  cardNome:              { fontSize: 15, fontWeight: "bold", marginBottom: 3 },
+  cardDetalhe:           { fontSize: 13 },
+  badgePequeno:          { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badgePequenoTexto:     { fontSize: 11, fontWeight: "bold" },
+  carregando:            { alignItems: "center", paddingVertical: 40, gap: 12 },
+  carregandoTexto:       { fontSize: 14 },
+  botaoLog:              { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1 },
+  botaoLogTexto:         { fontWeight: "bold", fontSize: 15, flex: 1 },
+  badgeLog:              { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  badgeLogTexto:         { color: "#fff", fontSize: 11, fontWeight: "bold" },
+  modalFundo:            { flex: 1, justifyContent: "flex-end" },
+  modalContainer:        { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 36 },
+  modalCabecalho:        { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  modalTitulo:           { fontSize: 22, fontWeight: "bold" },
+  modalSubtitulo:        { fontSize: 12, marginBottom: 16 },
+  logVazio:              { alignItems: "center", paddingVertical: 30, gap: 10 },
+  logVazioTexto:         { fontSize: 14 },
+  logItem:               { borderRadius: 8, padding: 10, marginBottom: 8, gap: 2 },
+  logTs:                 { fontSize: 10 },
+  logProto:              { fontSize: 11, fontWeight: "bold" },
+  logMensagem:           { fontSize: 12, marginTop: 2 },
+  botaoLimparLog:        { marginTop: 16, paddingVertical: 14, borderRadius: 8, alignItems: "center" },
+  botaoLimparLogTexto:   { fontWeight: "bold", fontSize: 15 },
 });
