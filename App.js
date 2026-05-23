@@ -1,9 +1,10 @@
 import Routes from './src/routes';
+import { ThemeProvider } from './src/theme';
 
 export default function App() {
   return (
-    <Routes/>
+    <ThemeProvider>
+      <Routes />
+    </ThemeProvider>
   );
 }
-
-
