@@ -13,7 +13,7 @@ const LIMITES = {
   rabbit: { temp: [38.5, 40.0], hr: [140, 300] },
 };
 
-export default function IoT() {
+export default function Monitoramento() {
   const { t } = useTheme();
 
   const [leitura, SetLeitura]               = useState(null);
@@ -117,7 +117,7 @@ export default function IoT() {
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <View style={styles.cabecalho}>
         <View>
-          <Text style={[styles.titulo, { color: t.text }]}>Monitor IoT</Text>
+          <Text style={[styles.titulo, { color: t.text }]}>Monitoramento</Text>
           <Text style={[styles.subtitulo, { color: t.muted }]}>ESP32-S3 · Wokwi Simulated</Text>
         </View>
         <View style={[styles.badgeStatus, { backgroundColor: online ? t.successBg : t.warningBg }]}>

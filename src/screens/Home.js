@@ -107,7 +107,7 @@ export default function Home({ navigation }) {
         {[
           { icone: "vaccines",       cor: t.primary,  bg: t.primaryBg,  label: "Vacinas",   tela: "Vacinas"   },
           { icone: "local-hospital", cor: t.success,  bg: t.successBg,  label: "Consultas", tela: "Consultas" },
-          { icone: "sensors",        cor: t.warning,  bg: t.warningBg,  label: "Monitor",   tela: "IoT"       },
+          { icone: "sensors",        cor: t.warning,  bg: t.warningBg,  label: "Monitor",   tela: "Monitoramento" },
           { icone: "emoji-emotions", cor: t.danger,   bg: t.dangerBg,   label: "Perfil",    tela: "Perfil"    },
         ].map((a) => (
           <TouchableOpacity key={a.label} style={styles.atalho} onPress={() => navigation.navigate(a.tela)}>
@@ -120,15 +120,15 @@ export default function Home({ navigation }) {
       </View>
 
       <View style={styles.secaoHeader}>
-        <Text style={[styles.secaoTitulo, { color: t.text }]}>Monitor IoT</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("IoT")}>
+        <Text style={[styles.secaoTitulo, { color: t.text }]}>Monitoramento</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("Monitoramento")}>
           <Text style={[styles.secaoLink, { color: t.primary }]}>Ver mais</Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
         style={[styles.cardIoT, { backgroundColor: t.surfaceCard }]}
-        onPress={() => navigation.navigate("IoT")}
+        onPress={() => navigation.navigate("Monitoramento")}
         activeOpacity={0.8}
       >
         <View style={styles.cardIoTHeader}>

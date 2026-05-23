@@ -7,7 +7,7 @@ import Vacinas from "../screens/vacinas";
 import Perfil from "../screens/Perfil";
 import Consultas from "../screens/Consultas";
 import Sobre from "../screens/Sobre";
-import IoT from "../screens/IoT";
+import Monitoramento from "../screens/Monitoramento";
 import { useTheme } from "../theme";
 
 const Tab = createBottomTabNavigator();
@@ -49,10 +49,10 @@ export default function TabRoutes() {
         }}
       />
       <Tab.Screen
-        name="IoT"
-        component={IoT}
+        name="Monitoramento"
+        component={Monitoramento}
         options={{
-          tabBarLabel: "IoT",
+          tabBarLabel: "Monitoramento",
           tabBarIcon: ({ color, size }) => <MaterialIcons name="sensors" size={size} color={color} />,
         }}
       />
