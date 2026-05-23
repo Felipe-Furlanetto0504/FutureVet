@@ -30,11 +30,7 @@ export default function Consultas() {
 
     const novaConsulta = {
       id: Date.now().toString(),
-      nomePet,
-      nomeConsulta,
-      data,
-      hora,
-      local,
+      nomePet,nomeConsulta,data,hora,local,
     };
 
     const novaLista = [...consultas, novaConsulta];

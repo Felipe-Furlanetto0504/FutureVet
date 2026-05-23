@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 40,
-    backgroundColor: "#fff",
+    backgroundColor: "#fff", 
   },
   titulo: {
     fontSize: 28,
