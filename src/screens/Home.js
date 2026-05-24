@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { Text, View, StyleSheet, ScrollView,TouchableOpacity, RefreshControl,} from "react-native";
+import { Text, View, ScrollView, TouchableOpacity, RefreshControl, StyleSheet } from "react-native";
 import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useTheme } from "../theme";
 
@@ -8,7 +8,6 @@ const API_BASE = "http://localhost:8080";
 
 export default function Home({ navigation }) {
   const { t } = useTheme();
-
   const [dados, SetDados]             = useState(null);
   const [pets, SetPets]               = useState([]);
   const [vacinas, SetVacinas]         = useState([]);
@@ -58,7 +57,7 @@ export default function Home({ navigation }) {
     .map((v) => ({ ...v, dias: diasAteVencimento(v.proxDose) }))
     .filter((v) => v.dias !== null)
     .sort((a, b) => a.dias - b.dias)
-    .slice(0, 4);
+    .slice(0, 3);
 
   function corDias(dias) {
     if (dias <= 7)  return t.danger;
@@ -68,376 +67,560 @@ export default function Home({ navigation }) {
 
   function textoDias(dias) {
     if (dias < 0)   return `Venceu há ${Math.abs(dias)}d`;
-    if (dias === 0) return "Vence hoje";
-    if (dias === 1) return "Vence amanhã";
-    return `Em ${dias} dias`;
+    if (dias === 0) return "Hoje";
+    if (dias === 1) return "Amanhã";
+    return `${dias}d`;
   }
 
   const primeiroNome = dados?.nome?.split(" ")[0] || "";
   const s = iot?.sensors;
+  const horaAtual = new Date().getHours();
+  const saudacao = horaAtual < 12 ? "Bom dia" : horaAtual < 18 ? "Boa tarde" : "Boa noite";
 
   return (
     <ScrollView
       style={{ backgroundColor: t.bg }}
-      contentContainerStyle={styles.scroll}
+      contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={atualizando} onRefresh={aoAtualizar} colors={[t.primary]} />
-      }
+      refreshControl={<RefreshControl refreshing={atualizando} onRefresh={aoAtualizar} colors={[t.primary]} />}
     >
-      <View style={styles.saudacao}>
+
+      {/* ── HEADER ── */}
+      <View style={[header.wrap, { backgroundColor: t.surfaceCard, borderBottomColor: t.border }]}>
         <View>
-          <Text style={[styles.saudacaoTexto, { color: t.text }]}>
-            Olá, {primeiroNome || "bem-vindo"}! 👋
-          </Text>
-          <Text style={[styles.saudacaoSub, { color: t.muted }]}>
-            {pets.length === 0
-              ? "Cadastre seu primeiro pet no Perfil"
-              : `Você tem ${pets.length} pet${pets.length !== 1 ? "s" : ""} cadastrado${pets.length !== 1 ? "s" : ""}`}
-          </Text>
+          <Text style={[header.saudacao, { color: t.muted }]}>{saudacao},</Text>
+          <Text style={[header.nome, { color: t.text }]}>{primeiroNome || "Tutor"}</Text>
         </View>
-        <View style={[styles.avatarPequeno, { backgroundColor: t.primary }]}>
-          <Text style={styles.avatarLetra}>
+        <TouchableOpacity onPress={() => navigation.navigate("Perfil")}
+          style={[header.avatar, { backgroundColor: t.primaryBg, borderColor: t.primary + "40" }]}>
+          <Text style={[header.avatarLetra, { color: t.primary }]}>
             {primeiroNome ? primeiroNome.charAt(0).toUpperCase() : "?"}
           </Text>
-        </View>
-      </View>
-
-      <View style={styles.atalhos}>
-        {[
-          { icone: "vaccines",       cor: t.primary,  bg: t.primaryBg,  label: "Vacinas",   tela: "Vacinas"   },
-          { icone: "local-hospital", cor: t.success,  bg: t.successBg,  label: "Consultas", tela: "Consultas" },
-          { icone: "sensors",        cor: t.warning,  bg: t.warningBg,  label: "Monitor",   tela: "Monitoramento" },
-          { icone: "emoji-emotions", cor: t.danger,   bg: t.dangerBg,   label: "Perfil",    tela: "Perfil"    },
-        ].map((a) => (
-          <TouchableOpacity key={a.label} style={styles.atalho} onPress={() => navigation.navigate(a.tela)}>
-            <View style={[styles.atalhoIcone, { backgroundColor: a.bg }]}>
-              <MaterialIcons name={a.icone} size={24} color={a.cor} />
-            </View>
-            <Text style={[styles.atalhoTexto, { color: t.text2 }]}>{a.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.secaoHeader}>
-        <Text style={[styles.secaoTitulo, { color: t.text }]}>Monitoramento</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Monitoramento")}>
-          <Text style={[styles.secaoLink, { color: t.primary }]}>Ver mais</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        style={[styles.cardIoT, { backgroundColor: t.surfaceCard }]}
-        onPress={() => navigation.navigate("Monitoramento")}
-        activeOpacity={0.8}
-      >
-        <View style={styles.cardIoTHeader}>
-          <View style={styles.cardIoTPet}>
-            <FontAwesome5 name="paw" size={16} color={t.primary} />
-            <Text style={[styles.cardIoTPetNome, { color: t.text }]}>Rex</Text>
-          </View>
-          <View style={[styles.badgeStatus, { backgroundColor: iotOnline ? t.successBg : t.warningBg }]}>
-            <MaterialIcons name={iotOnline ? "wifi" : "wifi-off"} size={12}
-              color={iotOnline ? t.success : t.warning} />
-            <Text style={[styles.badgeStatusTexto, { color: iotOnline ? t.success : t.warning }]}>
-              {iotOnline ? "Online" : "Offline"}
-            </Text>
-          </View>
-        </View>
+      <View style={{ paddingHorizontal: 20 }}>
 
-        {s ? (
-          <View style={styles.cardIoTSensores}>
-            {[
-              { icone: "thermostat",    cor: t.danger,  val: `${s.temperature_celsius}°C`, label: "Temp."    },
-              { icone: "favorite",      cor: t.primary, val: `${s.heart_rate_bpm} bpm`,    label: "Cardíaca" },
-              { icone: "directions-run",cor: t.warning, val: `${s.steps_last_minute}/min`, label: "Atividade"},
-            ].map((item, i, arr) => (
-              <View key={item.label} style={styles.cardIoTSensorWrap}>
-                <View style={styles.cardIoTSensor}>
-                  <MaterialIcons name={item.icone} size={18} color={item.cor} />
-                  <Text style={[styles.cardIoTValor, { color: t.text }]}>{item.val}</Text>
-                  <Text style={[styles.cardIoTLabel, { color: t.muted }]}>{item.label}</Text>
-                </View>
-                {i < arr.length - 1 && <View style={[styles.cardIoTDivisor, { backgroundColor: t.divisor }]} />}
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.cardIoTVazio}>
-            <MaterialIcons name="wifi-off" size={22} color={t.muted2} />
-            <Text style={[styles.cardIoTVazioTexto, { color: t.muted2 }]}>
-              Inicie o petlink_server.py para ver os dados
-            </Text>
-          </View>
-        )}
-
-        <View style={[styles.cardIoTRodape, { borderTopColor: t.divisor }]}>
-          <Text style={[styles.cardIoTRodapeTexto, { color: t.text2 }]}>
-            Score de saúde: {iot ? Math.round(iot.health_score) : "—"}/100
-          </Text>
-          <MaterialIcons name="chevron-right" size={18} color={t.muted} />
-        </View>
-      </TouchableOpacity>
-
-      <View style={styles.secaoHeader}>
-        <Text style={[styles.secaoTitulo, { color: t.text }]}>Próximas Doses</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Vacinas")}>
-          <Text style={[styles.secaoLink, { color: t.primary }]}>Ver todas</Text>
-        </TouchableOpacity>
-      </View>
-
-      {vacinasOrdenadas.length === 0 ? (
-        <TouchableOpacity
-          style={[styles.cardVazio, { backgroundColor: t.surfaceCard }]}
-          onPress={() => navigation.navigate("Vacinas")}
-        >
-          <FontAwesome5 name="paw" size={28} color={t.muted2} />
-          <Text style={[styles.cardVazioTexto, { color: t.muted2 }]}>Nenhuma vacina cadastrada</Text>
-          <Text style={[styles.cardVazioSub, { color: t.muted2 }]}>Toque para adicionar</Text>
-        </TouchableOpacity>
-      ) : (
-        vacinasOrdenadas.map((vacina) => (
-          <View key={vacina.id} style={[styles.card, { backgroundColor: t.surfaceCard }]}>
-            <View style={[styles.cardIcone, { backgroundColor: corDias(vacina.dias) + "20" }]}>
-              <MaterialIcons
-                name={vacina.dias <= 0 ? "error" : vacina.dias <= 7 ? "warning" : vacina.dias <= 30 ? "schedule" : "check-circle"}
-                size={22} color={corDias(vacina.dias)} />
-            </View>
-            <View style={styles.cardInfo}>
-              <Text style={[styles.cardNome, { color: t.text }]}>{vacina.nomeVacina}</Text>
-              <Text style={[styles.cardDetalhe, { color: t.text2 }]}>
-                🐾 {vacina.nomePet}  ·  Próx. dose: {vacina.proxDose}
-              </Text>
-            </View>
-            <View style={[styles.badgeDias, { backgroundColor: corDias(vacina.dias) + "20" }]}>
-              <Text style={[styles.badgeDiasTexto, { color: corDias(vacina.dias) }]}>
-                {textoDias(vacina.dias)}
-              </Text>
-            </View>
-          </View>
-        ))
-      )}
-
-      {pets.length > 0 && (
-        <>
-          <View style={styles.secaoHeader}>
-            <Text style={[styles.secaoTitulo, { color: t.text }]}>Meus Pets</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
-              <Text style={[styles.secaoLink, { color: t.primary }]}>Gerenciar</Text>
-            </TouchableOpacity>
-          </View>
-          {pets.map((pet) => (
-            <View key={pet.id} style={[styles.card, { backgroundColor: t.surfaceCard }]}>
-              <View style={[styles.cardIcone, { backgroundColor: t.primaryBg }]}>
-                <FontAwesome5 name="paw" size={20} color={t.primary} />
-              </View>
-              <View style={styles.cardInfo}>
-                <Text style={[styles.cardNome, { color: t.text }]}>{pet.nome}</Text>
-                <Text style={[styles.cardDetalhe, { color: t.text2 }]}>
-                  Idade: {pet.idade}  ·  Peso: {pet.peso}  ·  Tamanho: {pet.tamanho}
-                </Text>
-              </View>
+        {/* ── STATS STRIP ── */}
+        <View style={[strip.wrap, { backgroundColor: t.surfaceCard, borderColor: t.border }]}>
+          {[
+            { val: pets.length,    label: "Pets",      cor: t.primary, icone: "paw",      lib: "fa5"      },
+            { val: vacinas.length, label: "Vacinas",   cor: t.success, icone: "vaccines", lib: "material" },
+            { val: iot ? Math.round(iot.health_score) : "—", label: "Saúde", cor: t.warning, icone: "favorite", lib: "material" },
+          ].map((item, i, arr) => (
+            <View key={item.label} style={[strip.item, i < arr.length - 1 && { borderRightWidth: 1, borderRightColor: t.border }]}>
+              {item.lib === "fa5"
+                ? <FontAwesome5 name={item.icone} size={14} color={item.cor} />
+                : <MaterialIcons name={item.icone} size={16} color={item.cor} />}
+              <Text style={[strip.val, { color: t.text }]}>{item.val}</Text>
+              <Text style={[strip.label, { color: t.muted }]}>{item.label}</Text>
             </View>
           ))}
-        </>
-      )}
+        </View>
+
+        {/* ── ATALHOS ── */}
+        <Text style={[sec.titulo, { color: t.text, marginTop: 24 }]}>Acesso rápido</Text>
+        <View style={atalhos.grid}>
+          {[
+            { icone: "vaccines",    lib: "material", cor: "#fff", bg: t.primary,  label: "Vacinas",   sub: `${vacinas.length} registros`, tela: "Vacinas",       destaque: true  },
+            { icone: "stethoscope", lib: "fa5",      cor: "#fff", bg: t.success,  label: "Consultas", sub: "Agendar",                     tela: "Consultas",     destaque: true  },
+            { icone: "sensors",     lib: "material", cor: t.warning,  bg: t.warningBg,  label: "Monitor",   sub: iotOnline ? "Online" : "Offline", tela: "Monitoramento", destaque: false },
+            { icone: "paw",         lib: "fa5",      cor: t.primary,  bg: t.primaryBg,  label: "Perfil",    sub: `${pets.length} pets`,     tela: "Perfil",        destaque: false },
+          ].map((a) => (
+            <TouchableOpacity key={a.label} activeOpacity={0.8}
+              style={[
+                atalhos.card,
+                { backgroundColor: a.bg, borderColor: a.destaque ? "transparent" : t.border, borderWidth: 1 },
+                a.destaque && { shadowColor: a.bg, shadowOpacity: 0.45, shadowRadius: 10, elevation: 6 },
+              ]}
+              onPress={() => navigation.navigate(a.tela)}>
+              <View style={[atalhos.iconeWrap, { backgroundColor: a.destaque ? "rgba(255,255,255,0.2)" : t.bg }]}>
+                {a.lib === "fa5"
+                  ? <FontAwesome5 name={a.icone} size={18} color={a.cor} />
+                  : <MaterialIcons name={a.icone} size={20} color={a.cor} />}
+              </View>
+              <Text style={[atalhos.label, { color: a.destaque ? "#fff" : t.text }]}>{a.label}</Text>
+              <Text style={[atalhos.sub, { color: a.destaque ? "rgba(255,255,255,0.75)" : t.muted }]}>{a.sub}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── IoT CARD ── */}
+        <View style={sec.header}>
+          <Text style={[sec.titulo, { color: t.text }]}>Monitoramento IoT</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Monitoramento")}>
+            <Text style={[sec.link, { color: t.primary }]}>Ver mais</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity activeOpacity={0.85}
+          style={[iot_card.wrap, { backgroundColor: t.surfaceCard, borderColor: t.border }]}
+          onPress={() => navigation.navigate("Monitoramento")}>
+
+          {/* top row */}
+          <View style={iot_card.top}>
+            <View style={iot_card.petRow}>
+              <View style={[iot_card.petIcone, { backgroundColor: t.primaryBg }]}>
+                <FontAwesome5 name="paw" size={13} color={t.primary} />
+              </View>
+              <Text style={[iot_card.petNome, { color: t.text }]}>Rex</Text>
+            </View>
+            <View style={[iot_card.badge, { backgroundColor: iotOnline ? t.successBg : t.warningBg }]}>
+              <View style={[iot_card.dot, { backgroundColor: iotOnline ? t.success : t.warning }]} />
+              <Text style={[iot_card.badgeTexto, { color: iotOnline ? t.success : t.warning }]}>
+                {iotOnline ? "Online" : "Offline"}
+              </Text>
+            </View>
+          </View>
+
+          {/* sensores */}
+          {s ? (
+            <View style={iot_card.sensores}>
+              {[
+                { icone: "thermostat",     cor: t.danger,  val: `${s.temperature_celsius}°C`, label: "Temperatura", bg: t.dangerBg  },
+                { icone: "favorite",       cor: t.primary, val: `${s.heart_rate_bpm}`,         label: "BPM",         bg: t.primaryBg },
+                { icone: "directions-run", cor: t.warning, val: `${s.steps_last_minute}`,      label: "Passos/min",  bg: t.warningBg },
+              ].map((item) => (
+                <View key={item.label} style={[iot_card.sensor, { backgroundColor: item.bg }]}>
+                  <MaterialIcons name={item.icone} size={16} color={item.cor} />
+                  <Text style={[iot_card.sensorVal, { color: item.cor }]}>{item.val}</Text>
+                  <Text style={[iot_card.sensorLabel, { color: item.cor + "AA" }]}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={iot_card.vazio}>
+              <MaterialIcons name="wifi-off" size={20} color={t.muted2} />
+              <Text style={[iot_card.vazioTexto, { color: t.muted2 }]}>
+                Inicie o petlink_server.py para ver os dados
+              </Text>
+            </View>
+          )}
+
+          {/* score bar */}
+          <View style={[iot_card.rodape, { borderTopColor: t.border }]}>
+            <View style={iot_card.scoreRow}>
+              <Text style={[iot_card.scoreLabel, { color: t.muted }]}>Score de saúde</Text>
+              <Text style={[iot_card.scoreVal, { color: t.text }]}>
+                {iot ? `${Math.round(iot.health_score)}/100` : "—"}
+              </Text>
+            </View>
+            {iot && (
+              <View style={[iot_card.barFundo, { backgroundColor: t.border }]}>
+                <View style={[iot_card.barPreenchida, {
+                  width: `${iot.health_score}%`,
+                  backgroundColor: iot.health_score >= 80 ? t.success : iot.health_score >= 50 ? t.warning : t.danger,
+                }]} />
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {/* ── PRÓXIMAS DOSES ── */}
+        <View style={sec.header}>
+          <Text style={[sec.titulo, { color: t.text }]}>Próximas Doses</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Vacinas")}>
+            <Text style={[sec.link, { color: t.primary }]}>Ver todas</Text>
+          </TouchableOpacity>
+        </View>
+
+        {vacinasOrdenadas.length === 0 ? (
+          <TouchableOpacity style={[vac.vazio, { backgroundColor: t.surfaceCard, borderColor: t.border }]}
+            onPress={() => navigation.navigate("Vacinas")}>
+            <View style={[vac.vazioIcone, { backgroundColor: t.primaryBg }]}>
+              <MaterialIcons name="vaccines" size={28} color={t.primary} />
+            </View>
+            <Text style={[vac.vazioTexto, { color: t.text2 }]}>Nenhuma vacina cadastrada</Text>
+            <Text style={[vac.vazioSub, { color: t.muted }]}>Toque para adicionar</Text>
+          </TouchableOpacity>
+        ) : (
+          vacinasOrdenadas.map((vacina) => {
+            const cor = corDias(vacina.dias);
+            return (
+              <View key={vacina.id} style={[vac.card, { backgroundColor: t.surfaceCard, borderColor: t.border, borderLeftColor: cor }]}>
+                <View style={[vac.icone, { backgroundColor: cor + "18" }]}>
+                  <MaterialIcons
+                    name={vacina.dias <= 0 ? "error" : vacina.dias <= 7 ? "warning" : vacina.dias <= 30 ? "schedule" : "check-circle"}
+                    size={20} color={cor} />
+                </View>
+                <View style={vac.info}>
+                  <Text style={[vac.nome, { color: t.text }]}>{vacina.nomeVacina}</Text>
+                  <View style={vac.row}>
+                    <FontAwesome5 name="paw" size={9} color={t.muted} />
+                    <Text style={[vac.detalhe, { color: t.muted }]}>{vacina.nomePet}  ·  {vacina.proxDose}</Text>
+                  </View>
+                </View>
+                <View style={[vac.badge, { backgroundColor: cor + "18" }]}>
+                  <Text style={[vac.badgeTexto, { color: cor }]}>{textoDias(vacina.dias)}</Text>
+                </View>
+              </View>
+            );
+          })
+        )}
+
+        {/* ── MEUS PETS ── */}
+        {pets.length > 0 && (
+          <>
+            <View style={sec.header}>
+              <Text style={[sec.titulo, { color: t.text }]}>Meus Pets</Text>
+              <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
+                <Text style={[sec.link, { color: t.primary }]}>Gerenciar</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
+              {pets.map((pet) => (
+                <TouchableOpacity key={pet.id} activeOpacity={0.8}
+                  style={[petCard.wrap, { backgroundColor: t.surfaceCard, borderColor: t.border }]}
+                  onPress={() => navigation.navigate("Perfil")}>
+                  <View style={[petCard.icone, { backgroundColor: t.primaryBg }]}>
+                    <FontAwesome5
+                      name={pet.especie === "cat" ? "cat" : pet.especie === "dog" ? "dog" : "paw"}
+                      size={26} color={t.primary} />
+                  </View>
+                  <Text style={[petCard.nome, { color: t.text }]}>{pet.nome}</Text>
+                  {pet.raca ? <Text style={[petCard.raca, { color: t.muted }]}>{pet.raca}</Text> : null}
+                  <View style={petCard.tags}>
+                    <View style={[petCard.tag, { backgroundColor: t.bg2 }]}>
+                      <Text style={[petCard.tagTexto, { color: t.text2 }]}>{pet.idade}</Text>
+                    </View>
+                    <View style={[petCard.tag, { backgroundColor: t.bg2 }]}>
+                      <Text style={[petCard.tagTexto, { color: t.text2 }]}>{pet.peso}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
+
+      </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  saudacao: {
+// ── STYLES ──────────────────────────────────────
+
+const header = StyleSheet.create({
+  wrap: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    marginBottom: 20,
   },
-  saudacaoTexto: {
-    fontSize: 22,
-    fontWeight: "bold",
-  },
-  saudacaoSub: {
+  saudacao: {
     fontSize: 13,
-    marginTop: 4,
+    fontWeight: "500",
+    marginBottom: 2,
   },
-  avatarPequeno: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+  nome: {
+    fontSize: 26,
+    fontWeight: "800",
+    letterSpacing: -0.6,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
   },
   avatarLetra: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: "800",
   },
-  atalhos: {
+});
+
+const strip = StyleSheet.create({
+  wrap: {
+    flexDirection: "row",
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 4,
+    overflow: "hidden",
+  },
+  item: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 14,
+    gap: 3,
+  },
+  val: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+});
+
+const sec = StyleSheet.create({
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 28,
+    alignItems: "center",
+    marginTop: 28,
+    marginBottom: 14,
   },
-  atalho: {
+  titulo: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  link: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+});
+
+const atalhos = StyleSheet.create({
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  card: {
+    width: "47%",
+    borderRadius: 18,
+    padding: 16,
+    gap: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+  },
+  iconeWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  sub: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+});
+
+const iot_card = StyleSheet.create({
+  wrap: {
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  top: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  petRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  petIcone: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  petNome: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  badge: {
+    flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
-  atalhoIcone: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  atalhoTexto: {
+  badgeTexto: {
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "700",
   },
-  secaoHeader: {
+  sensores: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  secaoTitulo: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  secaoLink: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  cardIoT: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 28,
-  },
-  cardIoTHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  cardIoTPet: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
-  cardIoTPetNome: {
-    fontSize: 15,
-    fontWeight: "bold",
-  },
-  badgeStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgeStatusTexto: {
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  cardIoTSensores: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  cardIoTSensorWrap: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  cardIoTSensor: {
-    flex: 1,
-    alignItems: "center",
-    gap: 4,
-  },
-  cardIoTValor: {
-    fontSize: 15,
-    fontWeight: "bold",
-  },
-  cardIoTLabel: {
-    fontSize: 11,
-  },
-  cardIoTDivisor: {
-    width: 1,
-    height: 40,
-  },
-  cardIoTVazio: {
-    alignItems: "center",
-    paddingVertical: 16,
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  cardIoTVazioTexto: {
+  sensor: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 12,
+    alignItems: "center",
+    gap: 4,
+  },
+  sensorVal: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  sensorLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  vazio: {
+    alignItems: "center",
+    paddingVertical: 20,
+    gap: 8,
+    marginBottom: 16,
+  },
+  vazioTexto: {
     fontSize: 13,
     textAlign: "center",
   },
-  cardIoTRodape: {
+  rodape: {
+    borderTopWidth: 1,
+    paddingTop: 14,
+    gap: 8,
+  },
+  scoreRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    borderTopWidth: 1,
-    paddingTop: 10,
   },
-  cardIoTRodapeTexto: {
-    fontSize: 13,
+  scoreLabel: {
+    fontSize: 12,
     fontWeight: "500",
+  },
+  scoreVal: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  barFundo: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  barPreenchida: {
+    height: 6,
+    borderRadius: 3,
+  },
+});
+
+const vac = StyleSheet.create({
+  vazio: {
+    alignItems: "center",
+    paddingVertical: 28,
+    borderRadius: 18,
+    gap: 10,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  vazioIcone: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vazioTexto: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  vazioSub: {
+    fontSize: 13,
   },
   card: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 14,
     marginBottom: 10,
+    borderWidth: 1,
+    borderLeftWidth: 4,
   },
-  cardIcone: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    justifyContent: "center",
+  icone: {
+    width: 40,
+    height: 40,
+    borderRadius: 11,
     alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
-  cardInfo: {
+  info: {
     flex: 1,
   },
-  cardNome: {
-    fontSize: 15,
-    fontWeight: "bold",
-    marginBottom: 3,
+  nome: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
   },
-  cardDetalhe: {
-    fontSize: 13,
-  },
-  badgeDias: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-  badgeDiasTexto: {
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  cardVazio: {
+  row: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 28,
-    borderRadius: 12,
-    marginBottom: 28,
+    gap: 5,
+  },
+  detalhe: {
+    fontSize: 12,
+  },
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  badgeTexto: {
+    fontSize: 11,
+    fontWeight: "800",
+  },
+});
+
+const petCard = StyleSheet.create({
+  wrap: {
+    width: 140,
+    borderRadius: 18,
+    padding: 16,
+    alignItems: "center",
     gap: 6,
+    borderWidth: 1,
   },
-  cardVazioTexto: {
+  icone: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  nome: {
     fontSize: 15,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
-  cardVazioSub: {
-    fontSize: 13,
+  raca: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  tags: {
+    flexDirection: "row",
+    gap: 6,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  tagTexto: {
+    fontSize: 10,
+    fontWeight: "600",
   },
 });
