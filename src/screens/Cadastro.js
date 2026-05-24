@@ -16,7 +16,7 @@ export default function Cadastro({ navigation }) {
 
   useEffect(() => {
     async function carregar() {
-      const dados = await AsyncStorage.getItem("INFORMACOES");
+      const dados = await AsyncStorage.getItem("usuarioLogado");
       if (dados) {
         const obj = JSON.parse(dados);
         SetNome(obj.nome); SetEmail(obj.email); SetSenha(obj.senha);
@@ -27,7 +27,6 @@ export default function Cadastro({ navigation }) {
   }, []);
 
   async function salvar() {
-  {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const cpfLimpo = cpf.replace(/\D/g, "");
     const telefoneLimpo = telefone.replace(/\D/g, "");
@@ -77,36 +76,41 @@ export default function Cadastro({ navigation }) {
         telefone,
       };
 
+      // SALVA LOCALMENTE
       await AsyncStorage.setItem(
-        "INFORMACOES",
+        "usuarioLogado",
         JSON.stringify(dados)
       );
 
-      Alert.alert("Sucesso", "Cadastro realizado com sucesso!", [
-        {
-          text: "OK",
-          onPress: () =>
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Login" }],
-            }),
-        },
-      ]);
+      Alert.alert(
+        "Sucesso",
+        "Cadastro realizado com sucesso!",
+        [
+          {
+            text: "OK",
+            onPress: () =>
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Login" }],
+              }),
+          },
+        ]
+      );
     } catch (error) {
       Alert.alert(
         "Erro",
         "Não foi possível salvar os dados."
       );
+
       console.log(error);
     }
-  }
-    const dados = { nome, email, senha, cpf, telefone };
-    await AsyncStorage.setItem("INFORMACOES", JSON.stringify(dados));
-    Alert.alert("Sucesso", "Cadastro realizado!", [{
-      text: "Ir para Login",
-      onPress: () => navigation.reset({ index: 0, routes: [{ name: "Login" }] }),
-    }]);
-  }
+      const dados = { nome, email, senha, cpf, telefone };
+      await AsyncStorage.setItem("INFORMACOES", JSON.stringify(dados));
+      Alert.alert("Sucesso", "Cadastro realizado!", [{
+        text: "Ir para Login",
+        onPress: () => navigation.reset({ index: 0, routes: [{ name: "Login" }] }),
+      }]);
+    }
 
   const s = styles(t);
   return (
