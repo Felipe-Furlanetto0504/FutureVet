@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { Text, View, StyleSheet, ScrollView, TouchableOpacity,FlatList, Alert, Modal, RefreshControl,} from "react-native";
 import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useTheme, Button, Chip } from "../theme";
@@ -13,29 +14,49 @@ const LIMITES = {
   rabbit: { temp: [38.5, 40.0], hr: [140, 300] },
 };
 
-export default function Monitoramento() {
+export default function Monitoramento({ navigation }) {
   const { t } = useTheme();
 
   const [leitura, SetLeitura]               = useState(null);
   const [online, SetOnline]                 = useState(false);
   const [atualizando, SetAtualizando]       = useState(false);
-  const [petSelecionado, SetPetSelecionado] = useState("rex");
+  const [petSelecionado, SetPetSelecionado] = useState(null);
   const [petsStorage, SetPetsStorage]       = useState([]);
   const [logs, SetLogs]                     = useState([]);
   const [modalLog, SetModalLog]             = useState(false);
+  const [mqttConectado, SetMqttConectado]   = useState(false);
   const pollRef = useRef(null);
 
-  useEffect(() => { carregarPetsStorage(); }, []);
+  useFocusEffect(
+    useCallback(() => { carregarPetsStorage(); }, [])
+  );
 
   useEffect(() => {
+    clearInterval(pollRef.current);
+    if (!mqttConectado || !petSelecionado) return;
     buscarDados();
     pollRef.current = setInterval(buscarDados, POLL_MS);
     return () => clearInterval(pollRef.current);
-  }, [petSelecionado]);
+  }, [petSelecionado, mqttConectado]);
 
   async function carregarPetsStorage() {
     const dados = await AsyncStorage.getItem("PETS");
-    if (dados) SetPetsStorage(JSON.parse(dados));
+    if (dados) {
+      const lista = JSON.parse(dados);
+      SetPetsStorage(lista);
+      if (lista.length > 0) SetPetSelecionado(lista[0].id);
+    }
+  }
+
+  function toggleMqtt() {
+    if (mqttConectado) {
+      clearInterval(pollRef.current);
+      SetMqttConectado(false);
+      SetOnline(false);
+      SetLeitura(null);
+    } else {
+      SetMqttConectado(true);
+    }
   }
 
   async function buscarDados() {
@@ -129,7 +150,7 @@ export default function Monitoramento() {
         </View>
       </View>
 
-      {!online && (
+      {mqttConectado && !online && (
         <View style={[styles.avisoOffline, { backgroundColor: t.warningBg }]}>
           <MaterialIcons name="info-outline" size={16} color={t.warning} />
           <Text style={[styles.avisoOfflineTexto, { color: t.warning }]}>
@@ -138,18 +159,53 @@ export default function Monitoramento() {
         </View>
       )}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        style={styles.petScroll} contentContainerStyle={styles.petScrollContent}>
-        {petsTabs.map((p) => (
-          <Chip key={p.id} label={p.emoji + " " + p.label} ativo={petSelecionado === p.id} onPress={() => SetPetSelecionado(p.id)} />
-        ))}
-      </ScrollView>
+      {petsStorage.length === 0 ? (
+        <View style={styles.semPets}>
+          <FontAwesome5 name="paw" size={48} color={t.muted2} />
+          <Text style={[styles.semPetsTitulo, { color: t.text }]}>Nenhum pet cadastrado</Text>
+          <Text style={[styles.semPetsTexto, { color: t.muted }]}>
+            Adicione um pet no Perfil para começar o monitoramento.
+          </Text>
+          <TouchableOpacity
+            style={[styles.botaoIrPerfil, { backgroundColor: t.primary }]}
+            onPress={() => navigation.navigate("Perfil")}
+          >
+            <MaterialIcons name="pets" size={18} color="#fff" />
+            <Text style={styles.botaoIrPerfilTexto}>Ir para Perfil</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            style={styles.petScroll} contentContainerStyle={styles.petScrollContent}>
+            {petsTabs.map((p) => (
+              <Chip key={p.id} label={p.emoji + " " + p.label} ativo={petSelecionado === p.id} onPress={() => SetPetSelecionado(p.id)} />
+            ))}
+          </ScrollView>
 
-      <ScrollView showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingHorizontal: 20 }]}
-        refreshControl={<RefreshControl refreshing={atualizando} onRefresh={aoAtualizar} colors={[t.primary]} />}>
+          <TouchableOpacity
+            style={[styles.botaoMqtt, { backgroundColor: mqttConectado ? t.dangerBg : t.primaryBg, borderColor: mqttConectado ? t.danger : t.primary }]}
+            onPress={toggleMqtt}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons
+              name={mqttConectado ? "wifi-off" : "wifi"}
+              size={20}
+              color={mqttConectado ? t.danger : t.primary}
+            />
+            <Text style={[styles.botaoMqttTexto, { color: mqttConectado ? t.danger : t.primary }]}>
+              {mqttConectado ? "Desconectar MQTT" : "Conectar MQTT"}
+            </Text>
+            {mqttConectado && online && (
+              <View style={[styles.dotOnline, { backgroundColor: t.success }]} />
+            )}
+          </TouchableOpacity>
 
-        {s ? (
+          <ScrollView showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.scroll, { paddingHorizontal: 20 }]}
+            refreshControl={<RefreshControl refreshing={atualizando} onRefresh={aoAtualizar} colors={[t.primary]} />}>
+
+          {mqttConectado && s ? (
           <>
             <Text style={[styles.secaoTitulo, { color: t.text }]}>Sensores em Tempo Real</Text>
 
@@ -201,17 +257,26 @@ export default function Monitoramento() {
               </>
             )}
           </>
-        ) : (
+        ) : mqttConectado ? (
           <View style={styles.carregando}>
             <FontAwesome5 name="paw" size={40} color={t.muted2} />
             <Text style={[styles.carregandoTexto, { color: t.muted2 }]}>Buscando dados do sensor...</Text>
+          </View>
+        ) : (
+          <View style={styles.carregando}>
+            <MaterialIcons name="wifi-off" size={40} color={t.muted2} />
+            <Text style={[styles.carregandoTexto, { color: t.muted2 }]}>
+              Toque em "Conectar MQTT" para iniciar o monitoramento.
+            </Text>
           </View>
         )}
 
 
 
-        <Button label={`Ver Log MQTT / HTTP${logs.length > 0 ? "  ("+logs.length+")" : ""}`} variant="outline" onPress={() => SetModalLog(true)} icon={<MaterialIcons name="terminal" size={18} color={t.btnOutlineText} />} style={{ marginTop: 8 }} />
-      </ScrollView>
+          <Button label={`Ver Log MQTT / HTTP${logs.length > 0 ? "  ("+logs.length+")" : ""}`} variant="outline" onPress={() => SetModalLog(true)} icon={<MaterialIcons name="terminal" size={18} color={t.btnOutlineText} />} style={{ marginTop: 8 }} />
+          </ScrollView>
+        </>
+      )}
 
       <Modal visible={modalLog} animationType="slide" transparent>
         <View style={[styles.modalFundo, { backgroundColor: t.modalFundo }]}>
@@ -415,6 +480,59 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "bold",
   },
+  semPets: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 12,
+    paddingTop: 60,
+  },
+  semPetsTitulo: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 8,
+  },
+  semPetsTexto: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  botaoIrPerfil: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  botaoIrPerfilTexto: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  botaoMqtt: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  botaoMqttTexto: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  dotOnline: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
   carregando: {
     alignItems: "center",
     paddingVertical: 40,
@@ -422,6 +540,8 @@ const styles = StyleSheet.create({
   },
   carregandoTexto: {
     fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
   },
   botaoLog: {
     flexDirection: "row",
